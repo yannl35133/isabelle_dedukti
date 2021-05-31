@@ -75,7 +75,6 @@ object Importer
     {
       progress.echo("Importing theory " + theory.name)
 
-      output.nl
       output.comment("theory " + theory.name)
       output.nl
 
@@ -178,7 +177,7 @@ object Importer
             using(new PartWriter(theory_file(name.theory)))(partwriter =>
             {
               val syntax = new LPWriter(output_file.dir, use_notations, partwriter)
-              syntax.eta_equality()
+              // syntax.eta_equality()
 
               for {
                 req <- dependencies.theory_graph.all_preds(List(name)).reverse.map(_.theory)
