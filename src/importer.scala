@@ -13,6 +13,7 @@ object Importer
 
   val default_output_file: Path = Path.explode("main.lp")
 
+  // Main function called by the CLI handler
   def importer(
     options: Options,
     session: String,
@@ -20,6 +21,7 @@ object Importer
     dirs: List[Path] = Nil,
     fresh_build: Boolean = false,
     use_notations: Boolean = false,
+    eta_expand: Boolean = false,
     output_file: Path,
     verbose: Boolean = false)
   {
@@ -140,8 +142,7 @@ object Importer
 
     using(store.open_database(session))(db =>
     {
-      def import_theory_by_name(name: String, syntax: AbstractWriter, notations: collection.mutable.Map[Syntax.Ident, Syntax.Notation],
-      )
+      def import_theory_by_name(name: String, syntax: AbstractWriter, notations: collection.mutable.Map[Syntax.Ident, Syntax.Notation])
       {
         if (name == Thy_Header.PURE) {
           import_theory(syntax, notations,
@@ -156,6 +157,7 @@ object Importer
         }
       }
       val notations: collection.mutable.Map[Syntax.Ident, Syntax.Notation] = collection.mutable.Map()
+      Translate.global_eta_expand = eta_expand
 
       val ext = output_file.get_ext
       ext match {
@@ -177,7 +179,7 @@ object Importer
             using(new PartWriter(theory_file(name.theory)))(partwriter =>
             {
               val syntax = new LPWriter(output_file.dir, use_notations, partwriter)
-              // syntax.eta_equality()
+              if (!eta_expand) syntax.eta_equality()
 
               for {
                 req <- dependencies.theory_graph.all_preds(List(name)).reverse.map(_.theory)
@@ -200,7 +202,7 @@ object Importer
   }
 
 
-  /* Isabelle tool wrapper */
+  /* Isabelle tool wrapper and CLI handler */
 
   val isabelle_tool: Isabelle_Tool =
     Isabelle_Tool("dedukti_import", "import theory content into Dedukti", Scala_Project.here,
@@ -210,6 +212,7 @@ object Importer
       var dirs: List[Path] = Nil
       var fresh_build = false
       var use_notations = false
+      var eta_expand = false
       var options = Options.init()
       var verbose = false
 
@@ -221,6 +224,7 @@ Usage: isabelle dedukti_import [OPTIONS] SESSION
     -d DIR       include session directory
     -f           fresh build
     -n           use lambdapi notations
+    -e           remove need for eta flag
     -o OPTION    override Isabelle system OPTION (via NAME=VAL or NAME)
     -v           verbose mode
 
@@ -229,6 +233,7 @@ Usage: isabelle dedukti_import [OPTIONS] SESSION
       "O:" -> (arg => output_file = Path.explode(arg)),
       "d:" -> (arg => { dirs = dirs ::: List(Path.explode(arg)) }),
       "f" -> (_ => fresh_build = true),
+      "e" -> (_ => eta_expand = true),
       "n" -> (_ => use_notations = true),
       "o:" -> (arg => { options += arg }),
       "v" -> (_ => verbose = true))
@@ -253,6 +258,7 @@ Usage: isabelle dedukti_import [OPTIONS] SESSION
             dirs = dirs,
             fresh_build = fresh_build,
             use_notations = use_notations,
+            eta_expand = eta_expand,
             output_file = output_file,
             verbose = verbose)
         }
